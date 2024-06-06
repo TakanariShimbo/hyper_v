@@ -1,0 +1,4 @@
+volumes/*
+!volumes/.dummy
+images/*
+!images/.dummy
