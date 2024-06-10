@@ -45,6 +45,10 @@ Set-VM -Name $VMName `
     -CheckpointType Disabled
 
 
+Set-VM -VMName $VMName `
+    -EnhancedSessionTransportType HvSocket
+
+
 Add-VMGpuPartitionAdapter -VMName $VMName
 
 Set-VMGpuPartitionAdapter -VMName $VMName `
