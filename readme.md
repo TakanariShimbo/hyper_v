@@ -6,16 +6,15 @@ Create VM on Hyper-V with GPU Passthrough
 
 ```ps1
 hyper_v
-    |
-    ---- scripts
+    ├--- scripts
     |       |
-    |       ---- create.ps1
+    |       └--- create.ps1
     |
-    ---- images # create dir and set fullpath of iso
+    ├---  images # create dir and set fullpath of iso
     |       |
-    |       ---- linux or windows.iso
+    |       └--- linux or windows.iso
     |
-    ---- volumes
+    └--- volumes
 ```
 
 ## Create
@@ -84,3 +83,113 @@ export XDG_CURRENT_DESKTOP=ubuntu:GNOME
 test -x /etc/X11/Xsession && exec /etc/X11/Xsession
 exec /bin/sh /etc/X11/Xsession
 ```
+
+7. prepare wsl dir at host os
+
+- nvmdsig.inf_amd64_xxxxxxxxxxxxxxxx
+
+```ps1
+explorer.exe "$(Get-CimInstance -ClassName Win32_VideoController -Property * | Select-Object -ExpandProperty InstalledDisplayDrivers | Write-Output)".Split(",")[0].Trim("\nvldumdx.dll")
+```
+
+- lib
+
+```ps1
+explorer.exe "C:\Windows\System32\lxss\lib"
+```
+
+- make wsl dir and arrange like bellow
+
+```
+    wsl/
+    ├--- lib/
+    |
+    └--- drivers/
+            |
+            └--- nv_dispi.inf_amd64_50916785244854f2/
+```
+
+8. deploy wsl dir on guest os
+
+- copy wsl from host to guest
+
+- deploy wsl dir to `/usr/lib/wsl`
+
+```terminal
+mv ./wsl /usr/lib/wsl
+```
+
+- change mod
+
+```terminal
+sudo chown -R root:root /usr/lib/wsl
+sudo chmod 555 /usr/lib/wsl/lib/*
+```
+
+9. add path `/usr/lib/wsl/lib`
+
+- add to `/etc/ld.so.conf.d/ld.wsl.conf`
+
+```
+echo "/usr/lib/wsl/lib" | sudo tee /etc/ld.so.conf.d/ld.wsl.conf
+```
+
+- apply
+
+```
+sudo ldconfig
+```
+
+if error `/sbin/ldconfig.real: /usr/lib/wsl/lib/libcuda.so.1 is not a symbolic link` do bellow.
+
+```terminal
+cd /usr/lib/wsl/lib/
+sudo rm libcuda.so libcuda.so.1
+sudo ln -s libcuda.so.1.1 libcuda.so.1
+sudo ln -s libcuda.so.1 libcuda.so
+sudo ldconfig
+```
+
+- add to `/etc/profile.d/wsl.sh`
+
+```
+echo "export PATH=$PATH:/usr/lib/wsl/lib" | sudo tee /etc/profile.d/wsl.sh
+```
+
+- change mod
+
+```
+sudo chmod +x /etc/profile.d/wsl.sh
+```
+
+10. add custom kernel
+
+- download headers and image of kernel
+
+```terminal
+# https://github.com/brokeDude2901/dxgkrnl_ubuntu/releases/tag/main
+wget << headers deb link >>
+wget << image deb link >>
+```
+
+- install headers and image of kernel
+
+```terminal
+sudo apt install -y << headers deb >>
+sudo apt install -y << image deb >>
+```
+
+- add grub menu
+
+```
+sudo sed -i "s/GRUB_DEFAULT=0/GRUB_DEFAULT=saved/g" /etc/default/grub
+sudo sed -i "s/GRUB_TIMEOUT_STYLE=hidden/GRUB_TIMEOUT_STYLE=menu/g" /etc/default/grub
+sudo sed -i "s/GRUB_TIMEOUT=0/GRUB_TIMEOUT=30/g" /etc/default/grub
+sudo grep -q -F "GRUB_SAVEDEFAULT=true" /etc/default/grub || echo "GRUB_SAVEDEFAULT=true" | sudo tee -a /etc/default/grub
+sudo update-grub
+```
+
+11. open custom kernel
+
+- select `Advanced options for Ubuntu`
+- select `Ubuntu, with Linux 5.10.102.1-dxgrknl`
