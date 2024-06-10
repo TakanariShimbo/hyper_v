@@ -43,17 +43,24 @@ sudo apt intstall xrdp
 port=vsock://-1:3389
 ```
 
-4. restart xrdp at guest os
+4. edit `/etc/gdm3/custom.conf` at guest os
+
+```conf
+# from # WaylandEnable=false to WaylandEnable=false
+WaylandEnable=false
+```
+
+5. restart xrdp at guest os
 
 ```terminal
+sudo systemctl enable xrdp
 sudo systemctl restart xrdp
 
 # memo
 sudo systemctl status xrdp
-sudo systemctl enable xrdp
 ```
 
-5. edit `/etc/xrdp/startwm.sh` at guest os
+6. edit `/etc/xrdp/startwm.sh` at guest os
 
 ```
 #!/bin/sh
